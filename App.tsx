@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Dropzone } from './components/Dropzone';
 import { ResultCard } from './components/ResultCard';
 import { readFileAsDataURL, loadImage, convertToWebP } from './services/imageService';
 import { generateAltText } from './services/geminiService';
 import { ConversionState } from './types';
-import { Zap, Command, Sparkles } from 'lucide-react';
-
+import { Zap, Command, Sparkles, Wand2 } from 'lucide-react';
+import Footer from './components/footer';
 const initialState: ConversionState = {
   originalFile: null,
   originalPreviewUrl: null,
@@ -22,17 +23,14 @@ const initialState: ConversionState = {
 export default function App() {
   const [state, setState] = useState<ConversionState>(initialState);
 
-  // Process image conversion
+  // --- Logic (Unchanged) ---
   const processImage = useCallback(async (file: File, quality: number) => {
     setState(prev => ({ ...prev, isConverting: true, error: null }));
-    
     try {
       const dataUrl = await readFileAsDataURL(file);
       const img = await loadImage(dataUrl);
       const webpBlob = await convertToWebP(img, quality);
       const webpUrl = URL.createObjectURL(webpBlob);
-
-      // Calculate savings
       const savings = ((file.size - webpBlob.size) / file.size) * 100;
 
       setState(prev => ({
@@ -47,58 +45,48 @@ export default function App() {
       }));
     } catch (err) {
       console.error(err);
-      setState(prev => ({ 
-        ...prev, 
-        isConverting: false, 
-        error: "Failed to convert image. The file might be corrupted or unsupported." 
+      setState(prev => ({
+        ...prev,
+        isConverting: false,
+        error: "Failed to convert image. The file might be corrupted or unsupported."
       }));
     }
   }, []);
 
-  // Handle file selection
   const handleFileSelect = (file: File) => {
-    // Reset AI state when new file is loaded
     setState(prev => ({ ...initialState, quality: prev.quality }));
     processImage(file, state.quality);
   };
 
-  // Handle quality change with debounce-like behavior
   const handleQualityChange = (newQuality: number) => {
     setState(prev => ({ ...prev, quality: newQuality }));
   };
 
-  // Trigger re-conversion when quality changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (state.originalFile) {
-        processImage(state.originalFile, state.quality);
-      }
-    }, 300); // 300ms debounce
+      if (state.originalFile) processImage(state.originalFile, state.quality);
+    }, 300);
     return () => clearTimeout(timer);
   }, [state.quality, state.originalFile, processImage]);
 
-  // Clean up object URLs on unmount
   useEffect(() => {
     return () => {
       if (state.convertedUrl) URL.revokeObjectURL(state.convertedUrl);
     };
   }, [state.convertedUrl]);
 
-  // Handle AI Alt Text Generation
   const handleGenerateAlt = async () => {
     if (!state.convertedBlob) return;
-
     setState(prev => ({ ...prev, isGeneratingAi: true }));
-
     try {
       const text = await generateAltText(state.convertedBlob);
       setState(prev => ({ ...prev, aiAltText: text, isGeneratingAi: false }));
     } catch (error) {
       console.error(error);
-      setState(prev => ({ 
-        ...prev, 
-        isGeneratingAi: false, 
-        aiAltText: "Error: Could not reach Gemini API. Please check your configuration." 
+      setState(prev => ({
+        ...prev,
+        isGeneratingAi: false,
+        aiAltText: "Error: Could not reach Gemini API. Please check your configuration."
       }));
     }
   };
@@ -109,80 +97,135 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-200 selection:bg-blue-500/30 transition-colors duration-300">
-      
-      {/* Background Gradients */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/5 dark:bg-blue-600/10 rounded-full blur-[120px]"></div>
-         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/5 dark:bg-purple-600/10 rounded-full blur-[120px]"></div>
+    <div className="relative min-h-screen bg-gray-950 text-slate-200 selection:bg-blue-500/30 overflow-x-hidden font-sans">
+
+      {/* --- Atmospheric Background --- */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        {/* Grainy Noise Texture (adds materiality) */}
+        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+
+        {/* Deep Ambient Orbs */}
+        <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] mix-blend-screen" />
+        <div className="absolute bottom-[-10%] right-[20%] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen" />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8 md:py-16">
-        
-        {/* Header */}
-        <header className="text-center mb-12 space-y-4 pt-8 md:pt-0">
-          <div className="inline-flex items-center justify-center p-3 bg-white/80 dark:bg-slate-800/50 rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700/50 mb-4 shadow-xl backdrop-blur-md transition-colors duration-300">
-            <Zap className="text-blue-500 dark:text-blue-400 mr-2" size={28} />
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-              WebP Wizard
-            </h1>
-          </div>
-          <p className="text-slate-600 dark:text-slate-400 text-lg max-w-xl mx-auto transition-colors duration-300">
-            Transform your images into high-performance WebP format instantly. 
-            Secure, client-side conversion with <span className="text-purple-600 dark:text-purple-400 font-medium">Gemini AI</span> accessibility powers.
-          </p>
-        </header>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 md:py-20 flex flex-col min-h-screen">
 
-        {/* Main Content */}
-        <main className="transition-all duration-500 ease-in-out">
-          {!state.originalFile ? (
-            <div className="animate-fade-in-up">
-              <Dropzone onFileSelect={handleFileSelect} />
-              
-              <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-center max-w-4xl mx-auto">
-                <Feature 
-                  icon={<Zap size={20} />} 
-                  title="Blazing Fast" 
-                  desc="Client-side processing. Your images never leave your device." 
+        {/* --- Header --- */}
+        <motion.header
+          initial={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-center mb-16 space-y-6"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-lg">
+            <Wand2 className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-medium tracking-wide text-blue-200/80 uppercase">AI-Powered Compression</span>
+          </div>
+
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white drop-shadow-2xl">
+            WebP <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Wizard</span>
+          </h1>
+
+          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Client-side image optimization with semantic understanding.
+            <br className="hidden md:block" />
+            Faster load times, zero server latency.
+          </p>
+        </motion.header>
+
+        {/* --- Main Stage --- */}
+        <main className="flex-grow flex flex-col items-center justify-start w-full">
+          <AnimatePresence mode="wait">
+            {!state.originalFile ? (
+              <motion.div
+                key="dropzone"
+                initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="w-full max-w-4xl"
+              >
+                <Dropzone onFileSelect={handleFileSelect} />
+
+                {/* Feature Grid */}
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.8 }}
+                  className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6"
+                >
+                  <Feature
+                    icon={<Zap />}
+                    title="Instant Processing"
+                    desc="Local WASM conversion. Your images never leave this browser tab."
+                    delay={0}
+                  />
+                  <Feature
+                    icon={<Command />}
+                    title="Lossless Logic"
+                    desc="Smart compression algorithms reduce size up to 80% with visual fidelity."
+                    delay={0.1}
+                  />
+                  <Feature
+                    icon={<Sparkles />}
+                    title="Gemini Vision"
+                    desc="Google's multimodal AI sees your image and writes the alt text for you."
+                    delay={0.2}
+                  />
+                </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="result"
+                className="w-full"
+                // The ResultCard has its own internal animations, 
+                // so we just handle the layout transition here
+                layout
+              >
+                <ResultCard
+                  state={state}
+                  onQualityChange={handleQualityChange}
+                  onGenerateAlt={handleGenerateAlt}
+                  onReset={handleReset}
                 />
-                <Feature 
-                  icon={<Command size={20} />} 
-                  title="High Efficiency" 
-                  desc="Reduce file size by up to 80% without visible quality loss." 
-                />
-                <Feature 
-                  icon={<Sparkles size={20} />} 
-                  title="AI Enhanced" 
-                  desc="Generate SEO-friendly alt text automatically using Google Gemini." 
-                />
-              </div>
-            </div>
-          ) : (
-            <ResultCard 
-              state={state} 
-              onQualityChange={handleQualityChange}
-              onGenerateAlt={handleGenerateAlt}
-              onReset={handleReset}
-            />
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
-        
-        {/* Footer */}
-        <footer className="mt-24 text-center text-slate-500 dark:text-slate-600 text-sm pb-8">
-          <p>© {new Date().getFullYear()} WebP Wizard. Built with React, Tailwind & Gemini.</p>
-        </footer>
+
+        {/* --- Footer --- */}
+        {/* <motion.footer
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1, duration: 1 }}
+          className="mt-24 text-center"
+        >
+          <div className="inline-block px-4 py-2 rounded-lg border border-white/5 bg-white/[0.02]">
+            <p className="text-xs text-slate-500 font-mono">
+              Designed for performance. Built with Next.js & Framer Motion.
+            </p>
+          </div>
+        </motion.footer> */}
+        <Footer />
       </div>
     </div>
   );
 }
 
-// Helper component for features
-const Feature = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
-  <div className="p-6 rounded-2xl bg-white/60 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50 hover:bg-white/80 dark:hover:bg-slate-800/60 transition-colors shadow-sm">
-    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center mx-auto mb-4 text-blue-500 dark:text-blue-400 transition-colors">
-      {icon}
+// --- Glass Feature Tile ---
+const Feature = ({ icon, title, desc, delay }: { icon: React.ReactNode, title: string, desc: string, delay: number }) => (
+  <motion.div
+    whileHover={{ y: -5 }}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 + delay, type: "spring", stiffness: 300, damping: 20 }}
+    className="group p-8 rounded-3xl bg-white/[0.03] border border-white/5 backdrop-blur-sm hover:bg-white/[0.06] hover:border-white/10 transition-colors"
+  >
+    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-6 text-blue-400 group-hover:scale-110 transition-transform duration-300">
+      {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 1.5 })}
     </div>
-    <h3 className="text-slate-900 dark:text-white font-semibold mb-2 transition-colors">{title}</h3>
-    <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed transition-colors">{desc}</p>
-  </div>
+    <h3 className="text-lg font-medium text-white mb-3 tracking-wide">{title}</h3>
+    <p className="text-sm text-slate-400 leading-relaxed font-light">{desc}</p>
+  </motion.div>
 );
