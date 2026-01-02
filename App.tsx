@@ -1,31 +1,32 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dropzone } from './components/Dropzone';
-import { ResultCard } from './components/ResultCard';
+import { MultiResultCard } from './components/MultiResultCard';
 import { readFileAsDataURL, loadImage, convertToWebP } from './services/imageService';
 import { generateAltText } from './services/geminiService';
-import { ConversionState } from './types';
+import { MultiConversionState, FileConversionItem } from './types';
 import { Zap, Command, Sparkles, Wand2 } from 'lucide-react';
 import Footer from './components/Footer';
-const initialState: ConversionState = {
-  originalFile: null,
-  originalPreviewUrl: null,
-  convertedBlob: null,
-  convertedUrl: null,
-  isConverting: false,
+
+const generateId = () => Math.random().toString(36).substring(2, 9);
+
+const initialState: MultiConversionState = {
+  files: [],
   quality: 0.8,
-  error: null,
-  savings: 0,
-  aiAltText: null,
-  isGeneratingAi: false,
+  hasFiles: false,
 };
 
 export default function App() {
-  const [state, setState] = useState<ConversionState>(initialState);
+  const [state, setState] = useState<MultiConversionState>(initialState);
+  const qualityRef = useRef(state.quality);
 
-  // --- Logic (Unchanged) ---
-  const processImage = useCallback(async (file: File, quality: number) => {
-    setState(prev => ({ ...prev, isConverting: true, error: null }));
+  // Keep quality ref in sync
+  useEffect(() => {
+    qualityRef.current = state.quality;
+  }, [state.quality]);
+
+  // Process a single file
+  const processFile = useCallback(async (file: File, quality: number): Promise<Partial<FileConversionItem>> => {
     try {
       const dataUrl = await readFileAsDataURL(file);
       const img = await loadImage(dataUrl);
@@ -33,66 +34,165 @@ export default function App() {
       const webpUrl = URL.createObjectURL(webpBlob);
       const savings = ((file.size - webpBlob.size) / file.size) * 100;
 
-      setState(prev => ({
-        ...prev,
-        originalFile: file,
+      return {
         originalPreviewUrl: dataUrl,
         convertedBlob: webpBlob,
-        convertedUrl: prev.convertedUrl ? (URL.revokeObjectURL(prev.convertedUrl), webpUrl) : webpUrl,
+        convertedUrl: webpUrl,
         isConverting: false,
         savings,
-        quality
-      }));
+        error: null,
+      };
     } catch (err) {
       console.error(err);
-      setState(prev => ({
-        ...prev,
+      return {
         isConverting: false,
-        error: "Failed to convert image. The file might be corrupted or unsupported."
-      }));
+        error: "Failed to convert. File might be corrupted.",
+      };
     }
   }, []);
 
-  const handleFileSelect = (file: File) => {
-    setState(prev => ({ ...initialState, quality: prev.quality }));
-    processImage(file, state.quality);
-  };
+  // Handle multiple file selection
+  const handleFilesSelect = useCallback(async (files: File[]) => {
+    // Create initial file items
+    const initialItems: FileConversionItem[] = files.map(file => ({
+      id: generateId(),
+      originalFile: file,
+      originalPreviewUrl: null,
+      convertedBlob: null,
+      convertedUrl: null,
+      isConverting: true,
+      error: null,
+      savings: 0,
+      aiAltText: null,
+      isGeneratingAi: false,
+    }));
 
-  const handleQualityChange = (newQuality: number) => {
+    setState(prev => ({
+      ...prev,
+      files: [...prev.files, ...initialItems],
+      hasFiles: true,
+    }));
+
+    // Process all files in parallel
+    for (const item of initialItems) {
+      const result = await processFile(item.originalFile, qualityRef.current);
+
+      setState(prev => ({
+        ...prev,
+        files: prev.files.map(f =>
+          f.id === item.id ? { ...f, ...result } : f
+        ),
+      }));
+    }
+  }, [processFile]);
+
+  // Handle quality change
+  const handleQualityChange = useCallback((newQuality: number) => {
     setState(prev => ({ ...prev, quality: newQuality }));
-  };
+  }, []);
 
+  // Re-process all files when quality changes (debounced)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (state.originalFile) processImage(state.originalFile, state.quality);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [state.quality, state.originalFile, processImage]);
+    if (state.files.length === 0) return;
 
+    const timer = setTimeout(async () => {
+      // Mark all files as converting
+      setState(prev => ({
+        ...prev,
+        files: prev.files.map(f => ({ ...f, isConverting: true })),
+      }));
+
+      // Re-process each file
+      for (const file of state.files) {
+        // Revoke old URL
+        if (file.convertedUrl) {
+          URL.revokeObjectURL(file.convertedUrl);
+        }
+
+        const result = await processFile(file.originalFile, state.quality);
+
+        setState(prev => ({
+          ...prev,
+          files: prev.files.map(f =>
+            f.id === file.id ? { ...f, ...result } : f
+          ),
+        }));
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [state.quality]); // Only trigger on quality change
+
+  // Cleanup URLs on unmount
   useEffect(() => {
     return () => {
-      if (state.convertedUrl) URL.revokeObjectURL(state.convertedUrl);
+      state.files.forEach(file => {
+        if (file.convertedUrl) {
+          URL.revokeObjectURL(file.convertedUrl);
+        }
+      });
     };
-  }, [state.convertedUrl]);
+  }, []);
 
-  const handleGenerateAlt = async () => {
-    if (!state.convertedBlob) return;
-    setState(prev => ({ ...prev, isGeneratingAi: true }));
+  // Generate alt text for a specific file
+  const handleGenerateAlt = async (fileId: string) => {
+    const file = state.files.find(f => f.id === fileId);
+    if (!file?.convertedBlob) return;
+
+    setState(prev => ({
+      ...prev,
+      files: prev.files.map(f =>
+        f.id === fileId ? { ...f, isGeneratingAi: true } : f
+      ),
+    }));
+
     try {
-      const text = await generateAltText(state.convertedBlob);
-      setState(prev => ({ ...prev, aiAltText: text, isGeneratingAi: false }));
+      const text = await generateAltText(file.convertedBlob);
+      setState(prev => ({
+        ...prev,
+        files: prev.files.map(f =>
+          f.id === fileId ? { ...f, aiAltText: text, isGeneratingAi: false } : f
+        ),
+      }));
     } catch (error) {
       console.error(error);
       setState(prev => ({
         ...prev,
-        isGeneratingAi: false,
-        aiAltText: "Error: Could not reach Gemini API. Please check your configuration."
+        files: prev.files.map(f =>
+          f.id === fileId ? {
+            ...f,
+            isGeneratingAi: false,
+            aiAltText: "Error: Could not reach Gemini API."
+          } : f
+        ),
       }));
     }
   };
 
+  // Remove a specific file
+  const handleRemoveFile = (fileId: string) => {
+    const file = state.files.find(f => f.id === fileId);
+    if (file?.convertedUrl) {
+      URL.revokeObjectURL(file.convertedUrl);
+    }
+
+    setState(prev => {
+      const newFiles = prev.files.filter(f => f.id !== fileId);
+      return {
+        ...prev,
+        files: newFiles,
+        hasFiles: newFiles.length > 0,
+      };
+    });
+  };
+
+  // Reset all
   const handleReset = () => {
-    if (state.convertedUrl) URL.revokeObjectURL(state.convertedUrl);
+    state.files.forEach(file => {
+      if (file.convertedUrl) {
+        URL.revokeObjectURL(file.convertedUrl);
+      }
+    });
     setState(initialState);
   };
 
@@ -137,7 +237,7 @@ export default function App() {
         {/* --- Main Stage --- */}
         <main className="flex-grow flex flex-col items-center justify-start w-full">
           <AnimatePresence mode="wait">
-            {!state.originalFile ? (
+            {!state.hasFiles ? (
               <motion.div
                 key="dropzone"
                 initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
@@ -146,7 +246,7 @@ export default function App() {
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 className="w-full max-w-4xl"
               >
-                <Dropzone onFileSelect={handleFileSelect} />
+                <Dropzone onFilesSelect={handleFilesSelect} />
 
                 {/* Feature Grid */}
                 <motion.div
@@ -157,20 +257,20 @@ export default function App() {
                 >
                   <Feature
                     icon={<Zap />}
-                    title="Instant Processing"
-                    desc="Local WASM conversion. Your images never leave this browser tab."
+                    title="Batch Processing"
+                    desc="Upload multiple images at once. Convert them all in parallel with a single click."
                     delay={0}
                   />
                   <Feature
                     icon={<Command />}
-                    title="Lossless Logic"
-                    desc="Smart compression algorithms reduce size up to 80% with visual fidelity."
+                    title="Smart Compression"
+                    desc="Adaptive algorithms reduce size up to 80% while preserving visual fidelity."
                     delay={0.1}
                   />
                   <Feature
                     icon={<Sparkles />}
                     title="Gemini Vision"
-                    desc="Google's multimodal AI sees your image and writes the alt text for you."
+                    desc="Google's multimodal AI sees your images and writes the alt text for you."
                     delay={0.2}
                   />
                 </motion.div>
@@ -179,14 +279,13 @@ export default function App() {
               <motion.div
                 key="result"
                 className="w-full"
-                // The ResultCard has its own internal animations, 
-                // so we just handle the layout transition here
                 layout
               >
-                <ResultCard
+                <MultiResultCard
                   state={state}
                   onQualityChange={handleQualityChange}
                   onGenerateAlt={handleGenerateAlt}
+                  onRemoveFile={handleRemoveFile}
                   onReset={handleReset}
                 />
               </motion.div>
@@ -194,19 +293,6 @@ export default function App() {
           </AnimatePresence>
         </main>
 
-        {/* --- Footer --- */}
-        {/* <motion.footer
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1 }}
-          className="mt-24 text-center"
-        >
-          <div className="inline-block px-4 py-2 rounded-lg border border-white/5 bg-white/[0.02]">
-            <p className="text-xs text-slate-500 font-mono">
-              Designed for performance. Built with Next.js & Framer Motion.
-            </p>
-          </div>
-        </motion.footer> */}
         <Footer />
       </div>
     </div>

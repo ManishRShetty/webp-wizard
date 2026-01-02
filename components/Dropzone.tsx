@@ -1,9 +1,9 @@
 import React, { useCallback, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileImage, AlertCircle, Sparkles } from 'lucide-react';
+import { Upload, FileImage, AlertCircle, Sparkles, Images } from 'lucide-react';
 import { DragDropProps } from '../types';
 
-export const Dropzone = ({ onFileSelect }: DragDropProps) => {
+export const Dropzone = ({ onFilesSelect }: DragDropProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -15,16 +15,29 @@ export const Dropzone = ({ onFileSelect }: DragDropProps) => {
     transition: { duration: 0.4 }
   };
 
-  const validateAndProcessFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Invalid file type');
-      // Clear error after 2 seconds
+  const validateAndProcessFiles = useCallback((fileList: FileList) => {
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+
+    Array.from(fileList).forEach(file => {
+      if (file.type.startsWith('image/')) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
+    });
+
+    if (invalidFiles.length > 0 && validFiles.length === 0) {
+      setError('Invalid file types');
       setTimeout(() => setError(null), 2000);
       return;
     }
-    setError(null);
-    onFileSelect(file);
-  }, [onFileSelect]);
+
+    if (validFiles.length > 0) {
+      setError(null);
+      onFilesSelect(validFiles);
+    }
+  }, [onFilesSelect]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -45,14 +58,14 @@ export const Dropzone = ({ onFileSelect }: DragDropProps) => {
     e.stopPropagation();
     setIsDragging(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndProcessFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      validateAndProcessFiles(e.dataTransfer.files);
     }
-  }, [validateAndProcessFile]);
+  }, [validateAndProcessFiles]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      validateAndProcessFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      validateAndProcessFiles(e.target.files);
     }
   };
 
@@ -87,6 +100,7 @@ export const Dropzone = ({ onFileSelect }: DragDropProps) => {
         type="file"
         className="hidden"
         accept="image/*"
+        multiple
         onChange={handleInputChange}
       />
 
@@ -126,7 +140,7 @@ export const Dropzone = ({ onFileSelect }: DragDropProps) => {
                 transition={springConfig}
                 className="group-hover:scale-110 transition-transform duration-300 w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10"
               >
-                <FileImage className="w-10 h-10 text-gray-400 group-hover:text-white transition-colors" />
+                <Images className="w-10 h-10 text-gray-400 group-hover:text-white transition-colors" />
                 {/* Subtle sparkle decoration */}
                 <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-500/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </motion.div>
@@ -140,7 +154,7 @@ export const Dropzone = ({ onFileSelect }: DragDropProps) => {
             layout
             className={`text-2xl font-semibold tracking-tight transition-colors duration-300 ${error ? 'text-red-400' : isDragging ? 'text-blue-400' : 'text-white'}`}
           >
-            {error ? 'Invalid format' : isDragging ? 'Drop to upload' : 'Upload an image'}
+            {error ? 'Invalid format' : isDragging ? 'Drop to upload' : 'Upload images'}
           </motion.h3>
 
           <motion.p
@@ -149,7 +163,7 @@ export const Dropzone = ({ onFileSelect }: DragDropProps) => {
           >
             {error
               ? 'Please strictly use PNG, JPG, or BMP formats.'
-              : 'Drag and drop your file here, or click anywhere to browse.'
+              : 'Drag and drop your files here, or click anywhere to browse. You can select multiple images at once.'
             }
           </motion.p>
         </div>
