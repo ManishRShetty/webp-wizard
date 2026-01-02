@@ -5,7 +5,7 @@ import { MultiResultCard } from './components/MultiResultCard';
 import { readFileAsDataURL, loadImage, convertToWebP } from './services/imageService';
 import { generateAltText } from './services/geminiService';
 import { MultiConversionState, FileConversionItem } from './types';
-import { Zap, Command, Sparkles, Wand2 } from 'lucide-react';
+import { Zap, Command, Sparkles, Terminal } from 'lucide-react';
 import Footer from './components/Footer';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -20,12 +20,10 @@ export default function App() {
   const [state, setState] = useState<MultiConversionState>(initialState);
   const qualityRef = useRef(state.quality);
 
-  // Keep quality ref in sync
   useEffect(() => {
     qualityRef.current = state.quality;
   }, [state.quality]);
 
-  // Process a single file
   const processFile = useCallback(async (file: File, quality: number): Promise<Partial<FileConversionItem>> => {
     try {
       const dataUrl = await readFileAsDataURL(file);
@@ -51,9 +49,7 @@ export default function App() {
     }
   }, []);
 
-  // Handle multiple file selection
   const handleFilesSelect = useCallback(async (files: File[]) => {
-    // Create initial file items
     const initialItems: FileConversionItem[] = files.map(file => ({
       id: generateId(),
       originalFile: file,
@@ -73,7 +69,6 @@ export default function App() {
       hasFiles: true,
     }));
 
-    // Process all files in parallel
     for (const item of initialItems) {
       const result = await processFile(item.originalFile, qualityRef.current);
 
@@ -86,25 +81,20 @@ export default function App() {
     }
   }, [processFile]);
 
-  // Handle quality change
   const handleQualityChange = useCallback((newQuality: number) => {
     setState(prev => ({ ...prev, quality: newQuality }));
   }, []);
 
-  // Re-process all files when quality changes (debounced)
   useEffect(() => {
     if (state.files.length === 0) return;
 
     const timer = setTimeout(async () => {
-      // Mark all files as converting
       setState(prev => ({
         ...prev,
         files: prev.files.map(f => ({ ...f, isConverting: true })),
       }));
 
-      // Re-process each file
       for (const file of state.files) {
-        // Revoke old URL
         if (file.convertedUrl) {
           URL.revokeObjectURL(file.convertedUrl);
         }
@@ -121,9 +111,8 @@ export default function App() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [state.quality]); // Only trigger on quality change
+  }, [state.quality]);
 
-  // Cleanup URLs on unmount
   useEffect(() => {
     return () => {
       state.files.forEach(file => {
@@ -134,7 +123,6 @@ export default function App() {
     };
   }, []);
 
-  // Generate alt text for a specific file
   const handleGenerateAlt = async (fileId: string) => {
     const file = state.files.find(f => f.id === fileId);
     if (!file?.convertedBlob) return;
@@ -169,7 +157,6 @@ export default function App() {
     }
   };
 
-  // Remove a specific file
   const handleRemoveFile = (fileId: string) => {
     const file = state.files.find(f => f.id === fileId);
     if (file?.convertedUrl) {
@@ -186,7 +173,6 @@ export default function App() {
     });
   };
 
-  // Reset all
   const handleReset = () => {
     state.files.forEach(file => {
       if (file.convertedUrl) {
@@ -196,84 +182,75 @@ export default function App() {
     setState(initialState);
   };
 
+
   return (
-    <div className="relative min-h-screen bg-gray-950 text-slate-200 selection:bg-blue-500/30 overflow-x-hidden font-sans">
+    <div className="relative min-h-screen bg-oled-black text-white font-sans overflow-x-hidden selection:bg-matrix-green/30 selection:text-matrix-green">
 
-      {/* --- Atmospheric Background --- */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        {/* Grainy Noise Texture (adds materiality) */}
-        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      {/* Circuit Trace Background */}
+      <div className="fixed inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: `radial-gradient(#111 1px, transparent 1px)`, backgroundSize: '24px 24px' }}></div>
+      <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-oled-black to-transparent z-10 pointer-events-none" />
 
-        {/* Deep Ambient Orbs */}
-        <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] mix-blend-screen" />
-        <div className="absolute bottom-[-10%] right-[20%] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[120px] mix-blend-screen" />
-      </div>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 md:py-16 flex flex-col min-h-screen">
 
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 md:py-20 flex flex-col min-h-screen">
+        {/* Minimal Header */}
+        <header className="flex justify-between items-center mb-16">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 group cursor-default"
+          >
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-matrix-green/50 transition-colors duration-500">
+              <Terminal className="w-5 h-5 text-white/50 group-hover:text-matrix-green transition-colors duration-500" />
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-xl font-medium tracking-tight">WebP Wizard</h1>
+              <span className="text-xs text-white/30 font-mono tracking-widest uppercase">v2.0.0 // TERMINAL_NOIR</span>
+            </div>
+          </motion.div>
+        </header>
 
-        {/* --- Header --- */}
-        <motion.header
-          initial={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="text-center mb-16 space-y-6"
-        >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-lg">
-            <Wand2 className="w-4 h-4 text-blue-400" />
-            <span className="text-xs font-medium tracking-wide text-blue-200/80 uppercase">AI-Powered Compression</span>
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white drop-shadow-2xl">
-            WebP <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Wizard</span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Client-side image optimization with semantic understanding.
-            <br className="hidden md:block" />
-            Faster load times, zero server latency.
-          </p>
-        </motion.header>
-
-        {/* --- Main Stage --- */}
+        {/* Main Stage */}
         <main className="flex-grow flex flex-col items-center justify-start w-full">
           <AnimatePresence mode="wait">
             {!state.hasFiles ? (
               <motion.div
                 key="dropzone"
-                initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="w-full max-w-4xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98, filter: "blur(10px)" }}
+                transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                className="w-full max-w-5xl"
               >
+                <div className="text-center mb-12">
+                  <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+                    High-End Image Engineering.
+                  </h2>
+                  <p className="text-lg text-white/40 max-w-2xl mx-auto font-light leading-relaxed">
+                    Client-side compression with heavy-duty performance. <br className="hidden md:block" />
+                    Powered by <span className="text-matrix-green">Gemini Vision</span> for semantic understanding.
+                  </p>
+                </div>
+
                 <Dropzone onFilesSelect={handleFilesSelect} />
 
-                {/* Feature Grid */}
-                <motion.div
-                  initial={{ opacity: 0, y: 40 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.8 }}
-                  className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6"
-                >
+                {/* Benton Grid Features */}
+                <div className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Feature
                     icon={<Zap />}
-                    title="Batch Processing"
-                    desc="Upload multiple images at once. Convert them all in parallel with a single click."
-                    delay={0}
+                    title="Parallel Processing"
+                    desc="Multi-threaded batch conversion pipeline."
                   />
                   <Feature
                     icon={<Command />}
-                    title="Smart Compression"
-                    desc="Adaptive algorithms reduce size up to 80% while preserving visual fidelity."
-                    delay={0.1}
+                    title="Smart Algorithms"
+                    desc="Adaptive quantization for 80% size reduction."
                   />
                   <Feature
                     icon={<Sparkles />}
-                    title="Gemini Vision"
-                    desc="Google's multimodal AI sees your images and writes the alt text for you."
-                    delay={0.2}
+                    title="Neural Vision"
+                    desc="Gemini 1.5 Pro generates alt text automatically."
                   />
-                </motion.div>
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -299,19 +276,12 @@ export default function App() {
   );
 }
 
-// --- Glass Feature Tile ---
-const Feature = ({ icon, title, desc, delay }: { icon: React.ReactNode, title: string, desc: string, delay: number }) => (
-  <motion.div
-    whileHover={{ y: -5 }}
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 + delay, type: "spring", stiffness: 300, damping: 20 }}
-    className="group p-8 rounded-3xl bg-white/[0.03] border border-white/5 backdrop-blur-sm hover:bg-white/[0.06] hover:border-white/10 transition-colors"
-  >
-    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mb-6 text-blue-400 group-hover:scale-110 transition-transform duration-300">
-      {React.cloneElement(icon as React.ReactElement, { size: 24, strokeWidth: 1.5 })}
+const Feature = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
+  <div className="group p-8 rounded-[24px] bg-white/[0.02] border border-white/5 hover:border-matrix-green/30 hover:bg-white/[0.04] transition-all duration-500">
+    <div className="mb-6 text-white/40 group-hover:text-matrix-green transition-colors duration-500">
+      {React.cloneElement(icon as React.ReactElement, { size: 28, strokeWidth: 1 })}
     </div>
-    <h3 className="text-lg font-medium text-white mb-3 tracking-wide">{title}</h3>
-    <p className="text-sm text-slate-400 leading-relaxed font-light">{desc}</p>
-  </motion.div>
+    <h3 className="text-lg font-medium text-white mb-2">{title}</h3>
+    <p className="text-sm text-white/40 font-light leading-relaxed">{desc}</p>
+  </div>
 );

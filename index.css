@@ -1,0 +1,40 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,700,900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --color-oled-black: #000000;
+    --color-matrix-green: #00FF41;
+}
+
+@layer base {
+    body {
+        @apply bg-oled-black text-white font-sans antialiased selection:bg-matrix-green selection:text-oled-black;
+    }
+}
+
+@layer utilities {
+    .text-glow {
+        text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+    }
+}
+
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00FF41;
+}

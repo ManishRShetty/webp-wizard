@@ -1,184 +1,96 @@
-import React, { useCallback, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Upload, FileImage, AlertCircle, Sparkles, Images } from 'lucide-react';
-import { DragDropProps } from '../types';
+import React, { useCallback, useState } from 'react';
+import { Upload, FileUp, Sparkles } from 'lucide-react';
 
-export const Dropzone = ({ onFilesSelect }: DragDropProps) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+interface DropzoneProps {
+  onFilesSelect: (files: File[]) => void;
+}
 
-  // Physics Configuration
-  const springConfig = { type: "spring", stiffness: 400, damping: 25 };
-  const shakeAnimation = {
-    x: [0, -10, 10, -10, 10, 0],
-    transition: { duration: 0.4 }
-  };
+export const Dropzone: React.FC<DropzoneProps> = ({ onFilesSelect }) => {
+  const [isDragActive, setIsDragActive] = useState(false);
 
-  const validateAndProcessFiles = useCallback((fileList: FileList) => {
-    const validFiles: File[] = [];
-    const invalidFiles: string[] = [];
-
-    Array.from(fileList).forEach(file => {
-      if (file.type.startsWith('image/')) {
-        validFiles.push(file);
-      } else {
-        invalidFiles.push(file.name);
-      }
-    });
-
-    if (invalidFiles.length > 0 && validFiles.length === 0) {
-      setError('Invalid file types');
-      setTimeout(() => setError(null), 2000);
-      return;
-    }
-
-    if (validFiles.length > 0) {
-      setError(null);
-      onFilesSelect(validFiles);
-    }
-  }, [onFilesSelect]);
-
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
+  const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
+    setIsDragActive(true);
   }, []);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    // Prevent flickering when dragging over child elements
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    setIsDragging(false);
+    setIsDragActive(false);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+    setIsDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      validateAndProcessFiles(e.dataTransfer.files);
+    if (e.dataTransfer.files?.length) {
+      const pFiles = Array.from<File>(e.dataTransfer.files).filter(file =>
+        file.type.startsWith('image/')
+      );
+      if (pFiles.length > 0) {
+        onFilesSelect(pFiles);
+      }
     }
-  }, [validateAndProcessFiles]);
+  }, [onFilesSelect]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      validateAndProcessFiles(e.target.files);
+  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      const pFiles = Array.from(e.target.files!).filter((file: File) =>
+        file.type.startsWith('image/')
+      );
+      if (pFiles.length > 0) {
+        onFilesSelect(pFiles);
+      }
     }
-  };
+  }, [onFilesSelect]);
 
   return (
-    <motion.div
-      onClick={() => fileInputRef.current?.click()}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragEnter}
+    <div
+      onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      animate={error ? shakeAnimation : isDragging ? { scale: 1.02, y: -5 } : { scale: 1, y: 0 }}
-      transition={springConfig}
       className={`
-        relative group cursor-pointer w-full max-w-2xl mx-auto h-80 rounded-[32px] overflow-hidden
-        border transition-colors duration-500
-        ${isDragging
-          ? 'border-blue-500/50 bg-blue-500/10'
-          : error
-            ? 'border-red-500/50 bg-red-500/5'
-            : 'border-white/10 bg-gray-900/40 hover:border-white/20 hover:bg-gray-900/60'
+        group relative w-full h-80 rounded-[32px] border-2 border-dashed transition-all duration-500 ease-out cursor-pointer overflow-hidden
+        flex flex-col items-center justify-center gap-6
+        ${isDragActive
+          ? 'border-matrix-green/80 bg-matrix-green/5 shadow-[0_0_50px_-10px_rgba(0,255,65,0.2)]'
+          : 'border-white/10 bg-white/[0.02] hover:border-matrix-green/40 hover:bg-white/[0.04]'
         }
-        backdrop-blur-xl shadow-2xl
       `}
     >
-      {/* Background Grid Pattern for Technical Depth */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
-      </div>
-
       <input
-        ref={fileInputRef}
         type="file"
-        className="hidden"
-        accept="image/*"
         multiple
-        onChange={handleInputChange}
+        accept="image/*"
+        onChange={handleFileInput}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-center h-full p-8 text-center">
+      {/* Grid Pattern Background */}
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
+        style={{ backgroundImage: `linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)`, backgroundSize: '40px 40px' }} />
 
-        {/* Dynamic Icon Container */}
-        <div className="mb-6 relative">
-          <AnimatePresence mode="wait">
-            {error ? (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={springConfig}
-                className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)]"
-              >
-                <AlertCircle className="w-10 h-10 text-red-500" />
-              </motion.div>
-            ) : isDragging ? (
-              <motion.div
-                key="upload"
-                initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.5, y: -20 }}
-                transition={springConfig}
-                className="w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-[0_0_40px_-10px_rgba(59,130,246,0.5)]"
-              >
-                <Upload className="w-10 h-10 text-blue-500" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={springConfig}
-                className="group-hover:scale-110 transition-transform duration-300 w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10"
-              >
-                <Images className="w-10 h-10 text-gray-400 group-hover:text-white transition-colors" />
-                {/* Subtle sparkle decoration */}
-                <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-yellow-500/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Text Content */}
-        <div className="space-y-2">
-          <motion.h3
-            layout
-            className={`text-2xl font-semibold tracking-tight transition-colors duration-300 ${error ? 'text-red-400' : isDragging ? 'text-blue-400' : 'text-white'}`}
-          >
-            {error ? 'Invalid format' : isDragging ? 'Drop to upload' : 'Upload images'}
-          </motion.h3>
-
-          <motion.p
-            layout
-            className="text-sm text-gray-400 max-w-xs mx-auto leading-relaxed"
-          >
-            {error
-              ? 'Please strictly use PNG, JPG, or BMP formats.'
-              : 'Drag and drop your files here, or click anywhere to browse. You can select multiple images at once.'
-            }
-          </motion.p>
-        </div>
-
-        {/* Active State Border Pulse (Only visible when dragging) */}
-        {isDragging && (
-          <motion.div
-            layoutId="active-ring"
-            className="absolute inset-4 rounded-2xl border-2 border-dashed border-blue-500/30 pointer-events-none"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-          />
+      <div className={`relative z-10 flex items-center justify-center w-20 h-20 rounded-full bg-white/5 border border-white/10 transition-transform duration-500 ${isDragActive ? 'scale-110 border-matrix-green/50' : 'group-hover:scale-105 group-hover:border-white/20'}`}>
+        {isDragActive ? (
+          <FileUp className="w-8 h-8 text-matrix-green animate-bounce" />
+        ) : (
+          <Upload className="w-8 h-8 text-white/60 group-hover:text-white transition-colors" />
         )}
       </div>
-    </motion.div>
+
+      <div className="relative z-10 text-center space-y-2">
+        <h3 className="text-2xl font-medium tracking-tight text-white group-hover:text-matrix-green transition-colors duration-300">
+          {isDragActive ? "Release to Initialize" : "Drop Images Here"}
+        </h3>
+        <p className="text-sm text-white/40 font-mono tracking-wide">
+          OR CLICK TO BROWSE SYSTEM
+        </p>
+      </div>
+
+      {/* Floating Sparkle Hint */}
+      <div className="absolute bottom-8 flex items-center gap-2 px-3 py-1.5 rounded-full bg-matrix-green/10 border border-matrix-green/20 text-[10px] font-mono tracking-widest text-matrix-green uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+        <Sparkles className="w-3 h-3" />
+        <span>Supports JPG, PNG, TIFF</span>
+      </div>
+    </div>
   );
 };

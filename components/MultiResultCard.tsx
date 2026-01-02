@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Sparkles, RefreshCw, Check, ArrowRight, Copy, Archive, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Download, Sparkles, RefreshCw, Check, ArrowRight, Copy, Archive, X, ChevronDown, ChevronUp, Layers, Terminal } from 'lucide-react';
 import { formatBytes } from '../services/imageService';
 import { FileConversionItem, MultiConversionState } from '../types';
 import JSZip from 'jszip';
@@ -67,68 +67,65 @@ export const MultiResultCard: React.FC<MultiResultCardProps> = ({
             initial={{ opacity: 0, y: 40, filter: 'blur(10px)' }}
             animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="w-full max-w-6xl mx-auto space-y-6"
+            className="w-full max-w-6xl mx-auto space-y-8"
         >
-            {/* --- Control Bar --- */}
-            <div className="sticky top-4 z-50">
-                <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10" />
-                <div className="relative flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl">
+            {/* --- Control Deck --- */}
+            <div className="sticky top-6 z-50">
+                <div className="absolute inset-0 bg-oled-black/80 backdrop-blur-xl rounded-[24px] border border-white/10 shadow-[0_0_50px_-20px_rgba(0,0,0,0.5)]" />
+                <div className="relative p-2 rounded-[24px] flex flex-col md:flex-row items-center gap-2 md:gap-4">
 
+                    {/* Reset Action */}
                     <button
                         onClick={onReset}
-                        className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white transition-colors px-2"
+                        className="group flex items-center justify-center w-12 h-12 rounded-[18px] bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all duration-300"
+                        title="Start Over"
                     >
-                        <RefreshCw size={16} />
-                        <span className="hidden sm:inline">Start Over</span>
+                        <RefreshCw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
                     </button>
 
-                    {/* Stats */}
-                    <div className="hidden md:flex items-center gap-4 text-xs font-mono text-gray-400">
-                        <span>{files.length} file{files.length !== 1 ? 's' : ''}</span>
-                        <span className="w-1 h-1 rounded-full bg-gray-700" />
-                        <span>{formatBytes(totalOriginalSize)} → {formatBytes(totalConvertedSize)}</span>
-                        {totalSavings > 0 && (
-                            <>
-                                <span className="w-1 h-1 rounded-full bg-gray-700" />
-                                <span className="text-green-400">-{totalSavings.toFixed(0)}% saved</span>
-                            </>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-4 flex-1 justify-end">
-                        {/* Quality Slider */}
-                        <div className="flex items-center gap-4 bg-black/20 px-4 py-2 rounded-full border border-white/5">
-                            <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">Quality</span>
-                            <input
-                                type="range"
-                                min="0.1"
-                                max="1.0"
-                                step="0.05"
-                                value={quality}
-                                onChange={(e) => onQualityChange(parseFloat(e.target.value))}
-                                className="w-20 md:w-28 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-white hover:accent-blue-400 transition-colors"
-                            />
-                            <span className="text-sm font-bold text-white w-8 text-right">{Math.round(quality * 100)}%</span>
+                    {/* Stats Display */}
+                    <div className="hidden md:flex flex-col gap-1 px-4 border-l border-white/10">
+                        <span className="text-[10px] uppercase tracking-widest text-white/30 font-mono">Total Savings</span>
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-medium text-matrix-green">-{totalSavings.toFixed(0)}%</span>
+                            <span className="text-xs text-white/40 font-mono">{formatBytes(totalOriginalSize)} → {formatBytes(totalConvertedSize)}</span>
                         </div>
-
-                        {/* Download All Button */}
-                        <motion.button
-                            onClick={handleDownloadAll}
-                            disabled={isDownloadingAll || completedFiles.length === 0}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Archive size={16} strokeWidth={3} />
-                            {isDownloadingAll ? 'Creating ZIP...' : `Download All (${completedFiles.length})`}
-                        </motion.button>
                     </div>
+
+                    <div className="flex-1 w-full md:w-auto h-[1px] md:h-8 bg-white/5 md:bg-transparent" />
+
+                    {/* Quality Slider */}
+                    <div className="flex items-center gap-4 bg-black/40 px-6 py-3 rounded-[18px] border border-white/5 w-full md:w-auto">
+                        <span className="text-xs font-medium text-white/40 uppercase tracking-wider">Quality</span>
+                        <input
+                            type="range"
+                            min="0.1"
+                            max="1.0"
+                            step="0.05"
+                            value={quality}
+                            onChange={(e) => onQualityChange(parseFloat(e.target.value))}
+                            className="w-full md:w-32 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-matrix-green hover:accent-matrix-green/80 transition-colors"
+                        />
+                        <span className="text-sm font-mono text-matrix-green w-10 text-right">{Math.round(quality * 100)}%</span>
+                    </div>
+
+                    {/* Download Action */}
+                    <motion.button
+                        onClick={handleDownloadAll}
+                        disabled={isDownloadingAll || completedFiles.length === 0}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full md:w-auto flex items-center justify-center gap-3 bg-white text-black px-6 py-3 rounded-[18px] font-bold text-sm hover:bg-matrix-green transition-colors shadow-[0_0_30px_-10px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                    >
+                        <Archive size={18} strokeWidth={2.5} />
+                        <span className="tracking-tight">{isDownloadingAll ? 'Archiving...' : 'Download All'}</span>
+                    </motion.button>
                 </div>
             </div>
 
-            {/* --- Image Grid --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <AnimatePresence>
+            {/* --- Bento Grid --- */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <AnimatePresence mode="popLayout">
                     {files.map((file, index) => (
                         <ImageCard
                             key={file.id}
@@ -178,136 +175,108 @@ const ImageCard: React.FC<ImageCardProps> = ({
     return (
         <motion.div
             layout
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: -20 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
             transition={{ ...springConfig, delay: index * 0.05 }}
-            className="relative group rounded-2xl overflow-hidden bg-gray-900/50 border border-white/10 hover:border-white/20 transition-colors"
+            className="group relative rounded-[32px] overflow-hidden bg-white/[0.02] border border-white/5 hover:border-matrix-green/30 transition-all duration-500 hover:bg-white/[0.04]"
         >
-            {/* Remove Button */}
-            <button
-                onClick={onRemove}
-                className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/50 text-gray-400 hover:text-white hover:bg-red-500/50 transition-colors opacity-0 group-hover:opacity-100"
-            >
-                <X size={14} />
-            </button>
+            {/* Top Bar */}
+            <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-20 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+                <div className="pointer-events-auto">
+                    {savings > 0 && !isConverting && (
+                        <div className="px-3 py-1 rounded-full text-[10px] font-bold bg-matrix-green/10 text-matrix-green border border-matrix-green/20 backdrop-blur-md font-mono">
+                            SAVED {savings.toFixed(0)}%
+                        </div>
+                    )}
+                </div>
+                <button
+                    onClick={onRemove}
+                    className="pointer-events-auto p-2 rounded-full bg-black/40 text-white/40 hover:text-white hover:bg-red-500/20 hover:border-red-500/50 border border-transparent transition-all backdrop-blur-md opacity-0 group-hover:opacity-100"
+                >
+                    <X size={14} />
+                </button>
+            </div>
 
             {/* Image Preview */}
-            <div className="relative aspect-video overflow-hidden">
-                {/* Checkerboard Pattern */}
+            <div className="relative aspect-[4/3] bg-black/50 overflow-hidden">
+                {/* Grid Overlay */}
                 <div
-                    className="absolute inset-0 opacity-20"
+                    className="absolute inset-0 opacity-[0.1]"
                     style={{
-                        backgroundImage: 'linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%)',
+                        backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
                         backgroundSize: '20px 20px',
-                        backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px'
                     }}
                 />
 
-                {/* Loading State */}
-                {isConverting && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-950/80 backdrop-blur-sm z-10">
-                        <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                {isConverting ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/80 backdrop-blur-sm z-10">
+                        <div className="w-12 h-12 border-2 border-white/10 border-t-matrix-green rounded-full animate-spin" />
+                        <span className="text-xs font-mono text-matrix-green animate-pulse">PROCESSING_MATRIX...</span>
                     </div>
-                )}
-
-                {/* Error State */}
-                {error && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-red-950/50 z-10">
-                        <span className="text-red-400 text-sm px-4 text-center">{error}</span>
-                    </div>
-                )}
-
-                {/* Converted Image */}
-                {convertedUrl && !isConverting && (
+                ) : convertedUrl ? (
                     <img
                         src={convertedUrl}
                         alt={originalFile.name}
-                        className="w-full h-full object-contain relative z-5"
+                        className="w-full h-full object-contain relative z-5 p-8 transition-transform duration-700 group-hover:scale-105"
                     />
-                )}
-
-                {/* Savings Badge */}
-                {savings > 0 && !isConverting && (
-                    <div className="absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/20 backdrop-blur-sm">
-                        -{savings.toFixed(0)}%
-                    </div>
-                )}
+                ) : null}
             </div>
 
-            {/* Info Bar */}
-            <div className="p-3 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white truncate" title={originalFile.name}>
+            {/* Content Body */}
+            <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                        <h4 className="text-sm font-medium text-white truncate w-40" title={originalFile.name}>
                             {originalFile.name.split('.')[0]}.webp
-                        </p>
-                        <p className="text-xs text-gray-500 font-mono">
-                            {formatBytes(originalFile.size)} → {convertedBlob ? formatBytes(convertedBlob.size) : '...'}
-                        </p>
+                        </h4>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-white/30 font-mono">{formatBytes(originalFile.size)}</span>
+                            <ArrowRight size={10} className="text-white/20" />
+                            <span className="text-[10px] text-matrix-green font-mono">{convertedBlob ? formatBytes(convertedBlob.size) : '...'}</span>
+                        </div>
                     </div>
 
-                    {/* Download Button */}
                     {convertedUrl && !isConverting && (
                         <a
                             href={convertedUrl}
                             download={`${originalFile.name.split('.')[0]}.webp`}
-                            className="flex-shrink-0 p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors"
+                            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
                             title="Download"
                         >
-                            <Download size={16} />
+                            <Download size={18} />
                         </a>
                     )}
                 </div>
 
-                {/* AI Alt Text Section */}
-                <div className="pt-2 border-t border-white/5">
+                {/* AI Section with Glassmorphism */}
+                <div className="relative overflow-hidden rounded-xl bg-white/[0.03] border border-white/5">
                     {!aiAltText ? (
                         <button
                             onClick={onGenerateAlt}
                             disabled={isGeneratingAi || isConverting || !convertedBlob}
-                            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-10 flex items-center justify-center gap-2 text-xs font-medium text-white/50 hover:text-matrix-green hover:bg-matrix-green/5 transition-all disabled:opacity-50"
                         >
-                            <Sparkles size={12} />
-                            {isGeneratingAi ? 'Generating...' : 'Generate Alt Text'}
+                            <Sparkles size={14} />
+                            {isGeneratingAi ? 'Analyzing Vision Model...' : 'Generate Alt Text'}
                         </button>
                     ) : (
-                        <div className="space-y-2">
-                            <button
-                                onClick={onToggleExpand}
-                                className="w-full flex items-center justify-between text-xs text-gray-400 hover:text-white transition-colors"
-                            >
-                                <span className="flex items-center gap-1">
-                                    <Sparkles size={12} className="text-blue-400" />
-                                    AI Alt Text
-                                </span>
-                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            </button>
-
-                            <AnimatePresence>
-                                {isExpanded && (
-                                    <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: 'auto', opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="bg-black/30 rounded-lg p-2 flex gap-2 group/copy">
-                                            <p className="flex-1 text-xs text-gray-300 leading-relaxed">
-                                                {aiAltText}
-                                            </p>
-                                            <button
-                                                onClick={handleCopy}
-                                                className="self-start p-1 text-gray-500 hover:text-white transition-colors"
-                                                title="Copy"
-                                            >
-                                                {copied ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
+                        <div>
+                            <div className="p-3 bg-black/20 text-xs text-white/70 leading-relaxed font-light border-b border-white/5">
+                                "{aiAltText}"
+                            </div>
+                            <div className="flex">
+                                <button
+                                    onClick={handleCopy}
+                                    className="flex-1 py-2 flex items-center justify-center gap-2 text-[10px] font-mono uppercase tracking-wider text-white/40 hover:text-white hover:bg-white/5 transition-colors border-r border-white/5"
+                                >
+                                    {copied ? <Check size={12} className="text-matrix-green" /> : <Copy size={12} />}
+                                    {copied ? 'Copied' : 'Copy Text'}
+                                </button>
+                                <div className="px-3 py-2 flex items-center justify-center text-white/20 bg-black/20">
+                                    <Terminal size={12} />
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
