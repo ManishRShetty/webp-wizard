@@ -5,7 +5,7 @@ import { MultiResultCard } from './components/MultiResultCard';
 import { readFileAsDataURL, loadImage, convertToWebP } from './services/imageService';
 import { generateAltText } from './services/geminiService';
 import { MultiConversionState, FileConversionItem } from './types';
-import { Zap, Command, Sparkles, Terminal } from 'lucide-react';
+import { Zap, Command, Sparkles } from 'lucide-react';
 import Footer from './components/Footer';
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -199,12 +199,12 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-3 group cursor-default"
           >
-            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:border-matrix-green/50 transition-colors duration-500">
-              <Terminal className="w-5 h-5 text-white/50 group-hover:text-matrix-green transition-colors duration-500" />
+            <div className="w-10 h-10 ml-16 flex items-center justify-center group-hover:border-matrix-green/50 transition-colors duration-500">
+              <img src="/webpwizardlogo.png" alt="Logo" className="w-10 h-10 object-contain transition-transform duration-500 group-hover:rotate-[360deg]" />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl font-medium tracking-tight">WebP Wizard</h1>
-              <span className="text-xs text-white/30 font-mono tracking-widest uppercase">v2.0.0 // TERMINAL_NOIR</span>
+              <h1 className="text-3xl font-medium tracking-tight">WebP Wizard</h1>
+              <span className="text-xs text-white/30 font-mono tracking-widest uppercase">v2.0.0</span>
             </div>
           </motion.div>
         </header>
@@ -222,7 +222,7 @@ export default function App() {
                 className="w-full max-w-5xl"
               >
                 <div className="text-center mb-12">
-                  <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+                  <h2 className="text-4xl h-16 md:h-20 md:text-6xl font-bold tracking-tighter mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
                     High-End Image Engineering.
                   </h2>
                   <p className="text-lg text-white/40 max-w-2xl mx-auto font-light leading-relaxed">
