@@ -6,7 +6,7 @@ import { readFileAsDataURL, loadImage, convertToWebP } from './services/imageSer
 import { generateAltText } from './services/geminiService';
 import { ConversionState } from './types';
 import { Zap, Command, Sparkles, Wand2 } from 'lucide-react';
-import Footer from './components/footer';
+import Footer from './components/Footer';
 const initialState: ConversionState = {
   originalFile: null,
   originalPreviewUrl: null,
